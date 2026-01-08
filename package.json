@@ -1,0 +1,18 @@
+{
+  "name": "nuvei-api-emulator",
+  "version": "2.0.0-vbest",
+  "description": "Nuvei REST API 1.0 Emulator - Vbest Edition - Comprehensive payment flow testing with full 3DS, MPI-only, payouts, and scenario support",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build:frontend": "cd frontend && npm run build",
+    "preview": "wrangler dev --remote",
+    "check": "tsc --noEmit",
+    "deploy:vbest": "npm run check && wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251211.0",
+    "wrangler": "^4.54.0"
+  }
+}

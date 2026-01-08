@@ -1,0 +1,149 @@
+{
+	"id": "a6c55f04-0b1a-4f41-94d1-ec59207b6975",
+	"name": "https://ppp-test.safecharge.com",
+	"values": [
+		{
+			"key": "url",
+			"value": "https://ppp-test.safecharge.com",
+			"enabled": true
+		},
+		{
+			"key": "merchantSiteId",
+			"value": "<enter your merchantSiteId here>",
+			"enabled": true
+		},
+		{
+			"key": "merchantId",
+			"value": "<enter your merchantId here>",
+			"enabled": true
+		},
+		{
+			"key": "merchantKey",
+			"value": "<enter you secret here>",
+			"enabled": true
+		},
+		{
+			"key": "useSha256",
+			"value": "true",
+			"enabled": true
+		},
+		{
+			"key": "timestamp",
+			"value": "20200524143045",
+			"enabled": true
+		},
+		{
+			"key": "clientRequestId",
+			"value": "20200524143045",
+			"enabled": true
+		},
+		{
+			"key": "checksum",
+			"value": "69da9708e4bd7920e203d0d0eed85fb30d29fb526cc6735c7ce9421860cc4280",
+			"enabled": true
+		},
+		{
+			"key": "sessionToken",
+			"value": "575ce406-d4f3-4c27-a2b3-dc439182db24",
+			"enabled": true
+		},
+		{
+			"key": "ccTempToken",
+			"value": "undefined",
+			"enabled": true
+		},
+		{
+			"key": "clientUniqueId",
+			"value": "20180327175242",
+			"enabled": true
+		},
+		{
+			"key": "jwt",
+			"value": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbklkIjoiNTJiNjM1ZTEtOWIxOC00ZTA1LTlmNzItYzdlYzhkZDY0OTk5IiwibWVyY2hhbnRTaXRlSWQiOiIxOSIsIm1lcmNoYW50SWQiOiI3Nzc3Nzc3In0.sbR7pMn9mabSXRXFiMIC92dRnzHahImartW_kpPVRms",
+			"enabled": true
+		},
+		{
+			"key": "query",
+			"value": "merchant_site_id=51001&merchant_id=5288945245833474115&currency=EUR&total_amount=1&item_name_1=itemName&item_amount_1=1&quantity_1=1&user_token_id=petka&user_token=auto&first_name=Petka&last_name=LastName&country=DE&item_open_amount_1=true&item_min_amount_1=1&item_max_amount_1=100&email=pol@yahoo.com&merchantLocale=en_US&notify_url=http://dir.bg&time_stamp=20180629131601&version=4.0.0&checksum=0d3627c667481becc579c8f9493dd23e3404edd16ef86c51804f1973035a2439",
+			"enabled": true
+		},
+		{
+			"key": "apiMerchantOrder",
+			"value": null,
+			"enabled": true
+		},
+		{
+			"key": "paRequest",
+			"value": null,
+			"enabled": true
+		},
+		{
+			"key": "acsUrl",
+			"value": null,
+			"enabled": true
+		},
+		{
+			"key": "notificationUrl",
+			"value": "https://docs.nuvei.com/3Dsimulator/notificationUrl.php",
+			"enabled": true
+		},
+		{
+			"key": "amount",
+			"value": "150",
+			"enabled": true
+		},
+		{
+			"key": "currency",
+			"value": "EUR",
+			"enabled": true
+		},
+		{
+			"key": "relatedTransactionId",
+			"value": "1110000000005774644",
+			"enabled": true
+		},
+		{
+			"key": "authCode",
+			"value": "111135",
+			"enabled": true
+		},
+		{
+			"key": "paymentTransactionId",
+			"value": "1110000000005775175",
+			"enabled": true
+		},
+		{
+			"key": "settleTransactionId",
+			"value": "1110000000005761658",
+			"enabled": true
+		},
+		{
+			"key": "settleAuthCode",
+			"value": "111319",
+			"enabled": true
+		},
+		{
+			"key": "paymentAuthCode",
+			"value": "111063",
+			"enabled": true
+		},
+		{
+			"key": "initPaymentTransactionId",
+			"value": "1110000000005775173",
+			"enabled": true
+		},
+		{
+			"key": "threeDVersion",
+			"value": "2.1.0",
+			"enabled": true
+		},
+		{
+			"key": "cReq",
+			"value": null,
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2022-07-05T09:10:06.461Z",
+	"_postman_exported_using": "Postman/9.22.2"
+}

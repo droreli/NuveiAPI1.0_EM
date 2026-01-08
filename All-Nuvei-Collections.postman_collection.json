@@ -1,0 +1,1870 @@
+{
+	"info": {
+		"_postman_id": "a521a1aa-176f-4cac-876c-57573d172b88",
+		"name": "All Nuvei Collections ",
+		"description": "Update history\n\n10-02-2025 Jay A - Aligned 3DS.\n\n24-08-2022 Gabriella A - Removed 3DSv1.\n\n24-08-2022 Shaul G - Updated links in documentation.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "38195734"
+	},
+	"item": [
+		{
+			"name": "3DS Challenge Flow",
+			"item": [
+				{
+					"name": "/getSessionToken.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"sessionToken\", json.sessionToken);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"postman.setEnvironmentVariable('amount', '150');\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request, [\"merchantId\", \"merchantSiteId\", \"clientRequestId\", \"timeStamp\"]));\r",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getSessionToken.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getSessionToken.do"
+							]
+						},
+						"description": "This method receives a merchant request and returns a unique session token. A call to this method is the first necessary step in processing any payment. The most important fields in the request are:  \n\\- merchantSiteId  \n\\- merchantId  \n\\- checksum, which embeds the merchant's secret\n\nThe unique token is created upon the initial successful authorization and represents the client session.  \nFor subsequent calls to the session, the token must be provided for validation to ensure that it is still active and valid.\n\nFor more information, see [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken) and [https://docs.nuvei.com/?p=4583/](https://docs.nuvei.com/?p=4583/)"
+					},
+					"response": []
+				},
+				{
+					"name": "initPayment - 3DS",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"//postman.setEnvironmentVariable(\"relatedTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"initPaymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"threeDVersion\", json.paymentOption.card.threeD.version);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"currency\": \"USD\",\n    \"amount\": \"500\",\n    \"userTokenId\": \"asdasd\",\n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000020951595032\",\n            \"cardHolderName\": \"CL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\",\n            \"threeD\": {\n                \"methodNotificationUrl\": \"www.ThisIsAMethodNotificationURL.com\",\n                \"platformType\": \"01\"\n            }\n        }\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/initPayment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"initPayment.do"
+							]
+						},
+						"description": "This method initiates the payment process.\n\nThe response indicates whether the card supports 3DS and if it it does, which 3DS version it supports. For example:\n\n\"threeD\": {  \n\"methodUrl\": \"\",  \n\"version\": \"2.1.0\",  \n\"v2supported\": \"true\"  \n}\n\nindicates that the card supports 3DS version 2.1.0.\n\nIf \"v2supported\": \"false\", the card does not support 3DS.\n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#initpayment](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#initpayment)."
+					},
+					"response": []
+				},
+				{
+					"name": "/payment (challenge)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"paymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"acsUrl\", json.paymentOption.card.threeD.acsUrl);",
+									"postman.setEnvironmentVariable(\"cReq\", json.paymentOption.card.threeD.cReq);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request, [\"merchantId\", \"merchantSiteId\", \"clientRequestId\", \"amount\", \"currency\", \"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"sessionToken\": \"{{sessionToken}}\",\r\n    \"merchantId\": \"{{merchantId}}\",\r\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\r\n    \"clientRequestId\": \"{{clientRequestId}}\",\r\n    \"timeStamp\": \"{{timestamp}}\",\r\n    \"checksum\": \"{{checksum}}\",\r\n    \"currency\": \"{{currency}}\",\r\n    \"amount\": \"{{amount}}\",\r\n    \"relatedTransactionId\": \"{{initPaymentTransactionId}}\",\r\n    \"paymentOption\": {\r\n        \"card\": {\r\n            \"cardNumber\": \"4000020951595032\",\r\n            \"cardHolderName\": \"CL-BRW1\",\r\n            \"expirationMonth\": \"12\",\r\n            \"expirationYear\": \"25\",\r\n            \"CVV\": \"217\",\r\n            \"threeD\": {\r\n                \"methodCompletionInd\": \"U\",\r\n                \"version\": \"{{threeDVersion}}\",\r\n                \"notificationURL\": \"{{notificationUrl}}\",\r\n                \"merchantURL\": \"http://www.The-Merchant-Website-Fully-Quallified-URL.com\",\r\n                \"platformType\": \"02\",\r\n                \"v2AdditionalParams\": {\r\n                    \"challengePreference\": \"01\",\r\n                    \"deliveryEmail\": \"The_Email_Address_The_Merchandise_Was_Delivered@yoyoyo.com\",\r\n                    \"deliveryTimeFrame\": \"03\",\r\n                    \"giftCardAmount\": \"1\",\r\n                    \"giftCardCount\": \"41\",\r\n                    \"giftCardCurrency\": \"USD\",\r\n                    \"preOrderDate\": \"20220511\",\r\n                    \"preOrderPurchaseInd\": \"02\",\r\n                    \"reorderItemsInd\": \"01\",\r\n                    \"shipIndicator\": \"06\",\r\n                    \"rebillExpiry\": \"20200101\",\r\n                    \"rebillFrequency\": \"13\",\r\n                    \"challengeWindowSize\": \"05\"\r\n                },\r\n                \"browserDetails\": {\r\n                    \"acceptHeader\": \"text/html,application/xhtml+xml\",\r\n                    \"ip\": \"192.168.1.11\",\r\n                    \"javaEnabled\": \"TRUE\",\r\n                    \"javaScriptEnabled\": \"TRUE\",\r\n                    \"language\": \"EN\",\r\n                    \"colorDepth\": \"48\",\r\n                    \"screenHeight\": \"400\",\r\n                    \"screenWidth\": \"600\",\r\n                    \"timeZone\": \"0\",\r\n                    \"userAgent\": \"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47\"\r\n                },\r\n                \"account\": {\r\n                    \"age\": \"05\",\r\n                    \"lastChangeDate\": \"20190220\",\r\n                    \"lastChangeInd\": \"04\",\r\n                    \"registrationDate\": \"20190221\",\r\n                    \"passwordChangeDate\": \"20190222\",\r\n                    \"resetInd\": \"01\",\r\n                    \"purchasesCount6M\": \"6\",\r\n                    \"addCardAttempts24H\": \"24\",\r\n                    \"transactionsCount24H\": \"23\",\r\n                    \"transactionsCount1Y\": \"998\",\r\n                    \"cardSavedDate\": \"20190223\",\r\n                    \"cardSavedInd\": \"02\",\r\n                    \"addressFirstUseDate\": \"20190224\",\r\n                    \"addressFirstUseInd\": \"03\",\r\n                    \"nameInd\": \"02\",\r\n                    \"suspiciousActivityInd\": \"01\"\r\n                }\r\n            }\r\n        }\r\n    },\r\n    \"billingAddress\": {\r\n        \"firstName\": \"John\",\r\n        \"lastName\": \"Smith\",\r\n        \"address\": \"340689 main St.\",\r\n        \"city\": \"London\",\r\n        \"country\": \"GB\",\r\n        \"email\": \"john.smith@safecharge.com\"\r\n    },\r\n    \"shippingAddress\": {\r\n        \"firstName\": \"John\",\r\n        \"lastName\": \"Smith\",\r\n        \"address\": \"340689 main St.\",\r\n        \"city\": \"London\",\r\n        \"country\": \"GB\",\r\n        \"email\": \"john.smith@safecharge.com\"\r\n    },\r\n    \"deviceDetails\": {\r\n        \"ipAddress\": \"93.146.254.172\"\r\n    }\r\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/payment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"payment.do"
+							]
+						},
+						"description": "The /payment method sends the actual payment request, including 3DS data in the threeD JSON block.\n\nThe request charges the user unless a 3DS challenge is isssued.\n\nIn this simulation, a challenge is issued.\n\nA challenge is noticeable in the return JSON by two significant fields:\n\n1. The \"acsUrl\" element in the threeD block:\n    \n    \"threeD\": {  \n    \"acsUrl\": some_URL  \n    }\n    \n    The URL set for \"acsUrl\" redirects the user to the issuer for further authentication. In this simulation, it takes the user to \"[https://3dsn.sandbox.nuvei.com/](https://3dsn.sandbox.nuvei.com/), the Nuvei sandbox.\n    \n2. The \"transactionStatus\" element is defined as: \"REDIRECT\".\n    \n\n---\n\nThe next phase simulates an HTML page where the challenge is launched."
+					},
+					"response": []
+				},
+				{
+					"name": "Challenge",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/html",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://docs.nuvei.com/3Dsimulator/showUrl.php?acsUrl={{acsUrl}}&creq={{cReq}}",
+							"protocol": "https",
+							"host": [
+								"docs",
+								"nuvei",
+								"com"
+							],
+							"path": [
+								"3Dsimulator",
+								"showUrl.php"
+							],
+							"query": [
+								{
+									"key": "acsUrl",
+									"value": "{{acsUrl}}"
+								},
+								{
+									"key": "creq",
+									"value": "{{cReq}}"
+								}
+							]
+						},
+						"description": "This next step simulates the challenge process.\n\nTo demonstrate this:\n\n1. Copy the URL provided into an HTML document and open it in a browser. Then click the proceed to issuer button that appears.\n    \n2. An iFrame pops up inside the page. Click Success authentication in the window that appears."
+					},
+					"response": []
+				},
+				{
+					"name": "/payment (liability shift)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"relatedTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"authCode\", json.authCode);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request, [\"merchantId\", \"merchantSiteId\", \"clientRequestId\", \"amount\", \"currency\", \"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\",\n    \"relatedTransactionId\": \"{{paymentTransactionId}}\",\n    \"currency\": \"{{currency}}\",\n    \"amount\": \"{{amount}}\",\n    \"transactionType\": \"Auth\",\n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000020951595032\",\n            \"cardHolderName\": \"CL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\"\n        }\n    },\n    \"billingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"deviceDetails\": {\n        \"ipAddress\": \"93.146.254.172\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/payment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"payment.do"
+							]
+						},
+						"description": "Following the challenge, a liability-shifted payment is sent, referencing the initial 3DS /payment request by the relatedTransactionId field.\n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment)."
+					},
+					"response": []
+				}
+			],
+			"description": "This workflow simulates a scenario in which a card supports 3D Secure (3DS) and requires Strong Customer Authentication (SCA).\n\nFor more information about the 3DS Challenge flow, see: [https://docs.nuvei.com/?p=94383/](https://docs.nuvei.com/?p=94383/).\n\nThe phases in this workflow appear below."
+		},
+		{
+			"name": "3DS Frictionless Flow",
+			"item": [
+				{
+					"name": "/getSessionToken.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"sessionToken\", json.sessionToken);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request, [\"merchantId\", \"merchantSiteId\", \"clientRequestId\", \"timeStamp\"]));\r",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getSessionToken.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getSessionToken.do"
+							]
+						},
+						"description": "This method receives a merchant request and returns a unique session token. A call to this method is the first necessary step in processing any payment. The most important fields in the request are:  \n\\- merchantSiteId  \n\\- merchantId  \n\\- checksum, which embeds the merchant's secret\n\nThe unique token is created upon the initial successful authorization and represents the client session.  \nFor subsequent calls to the session, the token must be provided for validation to ensure that it is still active and valid.\n\nFor more information, see [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken) and [https://docs.nuvei.com/?p=4583/.](https://docs.nuvei.com/?p=4583/)"
+					},
+					"response": []
+				},
+				{
+					"name": "initPayment - 3DS",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"//postman.setEnvironmentVariable(\"relatedTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"initPaymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"threeDVersion\", json.paymentOption.card.threeD.version);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"currency\": \"USD\",\n    \"amount\": \"500\",\n    \"userTokenId\": \"asdasd\",\n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000027891380961\",\n            \"cardHolderName\": \"FL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\",\n            \"threeD\": {\n                \"methodNotificationUrl\": \"www.ThisIsAMethodNotificationURL.com\",\n                \"platformType\": \"01\"\n            }\n        }\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/initPayment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"initPayment.do"
+							]
+						},
+						"description": "This method initiates the payment process.\n\nThe response indicates whether the card supports 3DS and if it it does, which 3DS version it supports. For example:\n\n\"threeD\": {  \n\"methodUrl\": \"\",  \n\"version\": \"2.1.0\",  \n\"v2supported\": \"true\"  \n}\n\nindicates that the card supports 3DS version 2.1.0.\n\nIf \"v2supported\": \"false\", the card does not support 3DS.\n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#initpayment](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#initpayment).\n\n---\n\nBefore you proceed to the payment phase, implement browser fingerprinting on the client side, as follows:\n\nNote the URL specified for:\n\n\"threeD\": {  \n\"methodUrl\": URL  \n}\n\nin the  \n\"paymentOption\": {  \n\"card\": {  \n}  \nblock of the response.\n\nThat URL must be opened in a hidden iFrame. From that iFrame, you must get a response that can be one of the following: Y (YES), N (NO) or (U) UNAVAILABLE. Pass in that response through the\n\n\"threeD\": {  \n\"methodCompletionInd\"  \n}\n\nfield of the /payment request, in the next phase."
+					},
+					"response": []
+				},
+				{
+					"name": "/payment (frictionless) ",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"paymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"acsUrl\", json.paymentOption.card.threeD.acsUrl);",
+									"postman.setEnvironmentVariable(\"cReq\", json.paymentOption.card.threeD.cReq);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('amount', '150');\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"amount\", \"currency\",\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\",\n    \"currency\": \"{{currency}}\",\n    \"amount\": \"{{amount}}\",\n    \"relatedTransactionId\": \"{{initPaymentTransactionId}}\",\n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000027891380961\",\n            \"cardHolderName\": \"FL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\",\n            \"threeD\": {\n                \"methodCompletionInd\": \"U\",\n                \"version\": \"{{threeDVersion}}\",\n                \"notificationURL\": \"http://wwww.Test-Notification-URL-After-The-Challange-Is-Complete-Which-Recieves-The-CRes-Message.com\",\n                \"merchantURL\": \"http://www.The-Merchant-Website-Fully-Quallified-URL.com\",\n                \"platformType\": \"02\",\n                \"v2AdditionalParams\": {\n                    \"challengePreference\": \"01\",\n                    \"deliveryEmail\": \"The_Email_Address_The_Merchandise_Was_Delivered@yoyoyo.com\",\n                    \"deliveryTimeFrame\": \"03\",\n                    \"giftCardAmount\": \"1\",\n                    \"giftCardCount\": \"41\",\n                    \"giftCardCurrency\": \"USD\",\n                    \"preOrderDate\": \"20220511\",\n                    \"preOrderPurchaseInd\": \"02\",\n                    \"reorderItemsInd\": \"01\",\n                    \"shipIndicator\": \"06\",\n                    \"rebillExpiry\": \"20200101\",\n                    \"rebillFrequency\": \"13\",\n                    \"challengeWindowSize\": \"05\"\n                },\n                \"browserDetails\": {\n                    \"acceptHeader\": \"text/html,application/xhtml+xml\",\n                    \"ip\": \"192.168.1.11\",\n                    \"javaEnabled\": \"TRUE\",\n                    \"javaScriptEnabled\": \"TRUE\",\n                    \"language\": \"EN\",\n                    \"colorDepth\": \"48\",\n                    \"screenHeight\": \"400\",\n                    \"screenWidth\": \"600\",\n                    \"timeZone\": \"0\",\n                    \"userAgent\": \"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47\"\n                },\n                \"account\": {\n                    \"age\": \"05\",\n                    \"lastChangeDate\": \"20190220\",\n                    \"lastChangeInd\": \"04\",\n                    \"registrationDate\": \"20190221\",\n                    \"passwordChangeDate\": \"20190222\",\n                    \"resetInd\": \"01\",\n                    \"purchasesCount6M\": \"6\",\n                    \"addCardAttempts24H\": \"24\",\n                    \"transactionsCount24H\": \"23\",\n                    \"transactionsCount1Y\": \"998\",\n                    \"cardSavedDate\": \"20190223\",\n                    \"cardSavedInd\": \"02\",\n                    \"addressFirstUseDate\": \"20190224\",\n                    \"addressFirstUseInd\": \"03\",\n                    \"nameInd\": \"02\",\n                    \"suspiciousActivityInd\": \"01\"\n                }\n            }\n        }\n    },\n    \"billingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"shippingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"deviceDetails\": {\n        \"ipAddress\": \"93.146.254.172\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/payment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"payment.do"
+							]
+						},
+						"description": "Before you run this request, make sure that at the end of the previous call, you implemented browser fingerprinting on the client side.  \nBear in mind that for testing purposes, fingerprinting is not needed.\n\n---\n\nThe /payment method sends the actual payment request.\n\nThe critical fields for this phase are the following:\n\n1. In the root of the request:\n    \n\n\"relatedTransactionId\":\n\nPass in the {{initPaymentTransactionId}} environment variable, which was updated following the execution of the /initPayment request.\n\n1. In the \"threeD\" block:\n    \n\n\"threeD\": {  \n\"methodCompletionInd\": \"U\",  \n\"version\": \"{{threeDVersion}}\",  \n\"notificationURL\":\n\n- The \"methodCompletionInd\" field: Pass in the result of the browser fingerprinting that you performed in the previous phase. \"Y\", \"N\", or \"U\".\n    \n- The \"version\" field: Pass in the 3DS version as the {{threeDVersion}} environment variable, which was updated following the execution of the /initPayment request\n    \n- The \"notificationURL\" field: In case you need to perform a challenge, this is the URL to which you need to pass the result of the challenge.\n    \n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment).\n\nYou are ready to run the request.  \nA successful execution should result in a response that has:\n\n\"transactionStatus\": \"APPROVED\""
+					},
+					"response": []
+				}
+			],
+			"description": "This workflow simulates a scenario in which a card supports 3D Secure (3DS) and does not require SCA.\n\nFor more information about the 3DS Frictionless workflow, see: [https://docs.nuvei.com/?p=2006/](https://docs.nuvei.com/?p=2006/).\n\nThe phases in this workflow appear below."
+		},
+		{
+			"name": "External MPI",
+			"item": [
+				{
+					"name": "/getSessionToken.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"sessionToken\", json.sessionToken);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"timeStamp\"]));\r",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getSessionToken.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getSessionToken.do"
+							]
+						},
+						"description": "This method receives a merchant request and returns a unique session token. A call to this method is the first necessary step in processing any payment. The most important fields in the request are:  \n\\- merchantSiteId  \n\\- merchantId  \n\\- checksum, which embeds the merchant's secret\n\nThe unique token is created upon the initial successful authorization and represents the client session.  \nFor subsequent calls to the session, the token must be provided for validation to ensure that it is still active and valid.\n\nFor more information, see [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken) and [https://docs.nuvei.com/?p=4583/](https://docs.nuvei.com/?p=4583/)."
+					},
+					"response": []
+				},
+				{
+					"name": "/payment  (external MPI)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"relatedTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"authCode\", json.authCode);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('amount', '10');\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"amount\", \"currency\",\"timeStamp\"]));"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\",\n    \"relatedTransactionId\": \"{{paymentTransactionId}}\",\n    \"currency\": \"{{currency}}\",\n    \"amount\": \"{{amount}}\",\n    \"transactionType\": \"Auth\",\n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000020951595032\",\n            \"cardHolderName\": \"CL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\",\n            \"threeD\": {\n                \"externalMpi\": {\n                    \"eci\": \"2\",\n                    \"cavv\": \"ejJRWG9SWWRpU2I1M21DelozSXU=\",\n                    \"dsTransID\": \"9e6c6e9b-b390-4b11-ada9-0a8f595e8600\"\n                }\n            }\n        }\n    },\n    \"billingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"deviceDetails\": {\n        \"ipAddress\": \"93.146.254.172\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/payment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"payment.do"
+							]
+						},
+						"description": "Now, in the call to /payment API, values retrieved from the MPI are passed in the externalMpi block of the request:\n\n\"paymentOption\":{\n\n```\n\"threeD\":{ \n\"externalMpi\":{ \n    \"eci\":\"2\",\n    \"cavv\":\"ZkhQRHd3Mzd6Z2t2MlFLQmRMbW8\",\n    \"dsTransID\":\"9e6c6e9b-b390-4b11-ada9-0a8f595e8600\"\n}\n\n ```\n\n- cavv – The card authentication verification value.\n    \n- eci – The Electronic Commerce Indicator.\n    \n- dsTransID – The Transaction ID for 3DS.\n    \n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment)."
+					},
+					"response": []
+				}
+			],
+			"description": "This workflow simulates a liability-shifted transaction using 3DS authentication made with an MPI provider.\n\nThis scenario is common when merchants process with more than one payment provider and have one 3DS provider for all their transactions.\n\nFor more information, see: [https://docs.nuvei.com/?p=2156#liability-shift-payment](https://docs.nuvei.com/?p=2156#liability-shift-payment).\n\nThe phases in this workflow appear below."
+		},
+		{
+			"name": "MPI only (authorize3d+verify3d)",
+			"item": [
+				{
+					"name": "/getSessionToken.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"sessionToken\", json.sessionToken);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"postman.setEnvironmentVariable('amount', '150');\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"timeStamp\"]));\r",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getSessionToken.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getSessionToken.do"
+							]
+						},
+						"description": "This method receives a merchant request and returns a unique session token. A call to this method is the first necessary step in processing any payment. The most important fields in the request are:\r\n    - merchantSiteId\r\n    - merchantId\r\n    - checksum, which embeds the merchant's secret\r\n\r\nThe unique token is created upon the initial successful authorization and represents the client session. \r\nFor subsequent calls to the session, the token must be provided for validation to ensure that it is still active and valid.\r\n\r\nFor more information, see https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken and https://docs.nuvei.com/?p=4583/\r\n"
+					},
+					"response": []
+				},
+				{
+					"name": "initPayment - 3DS",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"//postman.setEnvironmentVariable(\"relatedTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"initPaymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"threeDVersion\", json.paymentOption.card.threeD.version);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"currency\": \"USD\",\n    \"amount\": \"{{amount}}\",\n    \"userTokenId\": \"asdasd\",\n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000020951595032\",\n            \"cardHolderName\": \"FL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\",\n            \"threeD\": {\n                \"methodNotificationUrl\": \"www.ThisIsAMethodNotificationURL.com\",\n                \"platformType\": \"01\"\n            }\n        }\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/initPayment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"initPayment.do"
+							]
+						},
+						"description": "This method initiates the authorization and authentication process.\n\nThe response indicates whether the card supports 3DS and if it it does, which 3DS version it supports. For example:\n\n\"threeD\": {  \n\"methodUrl\": \"\",  \n\"version\": \"2.1.0\",  \n\"v2supported\": \"true\"  \n}\n\nindicates that the card supports 3DS version 2.1.0.\n\nIf \"v2supported\": \"false\", the card does not support 3DS.\n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#initpayment](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#initpayment)."
+					},
+					"response": []
+				},
+				{
+					"name": "authorize3d",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"paymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"acsUrl\", json.paymentOption.card.threeD.acsUrl);",
+									"postman.setEnvironmentVariable(\"cReq\", json.paymentOption.card.threeD.cReq);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('amount', '150');\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"amount\", \"currency\",\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\",\n    \"currency\": \"{{currency}}\",\n    \"amount\": \"{{amount}}\",\n    \"relatedTransactionId\": \"{{initPaymentTransactionId}}\",\n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000020951595032\",\n            \"cardHolderName\": \"CL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\",\n            \"threeD\": {\n                \"methodCompletionInd\": \"U\",\n                \"version\": \"{{threeDVersion}}\",\n                \"notificationURL\": \"http://wwww.Test-Notification-URL-After-The-Challange-Is-Complete-Which-Recieves-The-CRes-Message.com\",\n                \"merchantURL\": \"http://www.The-Merchant-Website-Fully-Quallified-URL.com\",\n                \"platformType\": \"02\",\n                \"v2AdditionalParams\": {\n                    \"challengePreference\": \"01\",\n                    \"deliveryEmail\": \"The_Email_Address_The_Merchandise_Was_Delivered@yoyoyo.com\",\n                    \"deliveryTimeFrame\": \"03\",\n                    \"giftCardAmount\": \"1\",\n                    \"giftCardCount\": \"41\",\n                    \"giftCardCurrency\": \"USD\",\n                    \"preOrderDate\": \"20220511\",\n                    \"preOrderPurchaseInd\": \"02\",\n                    \"reorderItemsInd\": \"01\",\n                    \"shipIndicator\": \"06\",\n                    \"rebillExpiry\": \"20200101\",\n                    \"rebillFrequency\": \"13\",\n                    \"challengeWindowSize\": \"05\"\n                },\n                \"browserDetails\": {\n                    \"acceptHeader\": \"text/html,application/xhtml+xml\",\n                    \"ip\": \"192.168.1.11\",\n                    \"javaEnabled\": \"TRUE\",\n                    \"javaScriptEnabled\": \"TRUE\",\n                    \"language\": \"EN\",\n                    \"colorDepth\": \"48\",\n                    \"screenHeight\": \"400\",\n                    \"screenWidth\": \"600\",\n                    \"timeZone\": \"0\",\n                    \"userAgent\": \"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47\"\n                },\n                \"account\": {\n                    \"age\": \"05\",\n                    \"lastChangeDate\": \"20190220\",\n                    \"lastChangeInd\": \"04\",\n                    \"registrationDate\": \"20190221\",\n                    \"passwordChangeDate\": \"20190222\",\n                    \"resetInd\": \"01\",\n                    \"purchasesCount6M\": \"6\",\n                    \"addCardAttempts24H\": \"24\",\n                    \"transactionsCount24H\": \"23\",\n                    \"transactionsCount1Y\": \"998\",\n                    \"cardSavedDate\": \"20190223\",\n                    \"cardSavedInd\": \"02\",\n                    \"addressFirstUseDate\": \"20190224\",\n                    \"addressFirstUseInd\": \"03\",\n                    \"nameInd\": \"02\",\n                    \"suspiciousActivityInd\": \"01\"\n                }\n            }\n        }\n    },\n    \"billingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"shippingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"deviceDetails\": {\n        \"ipAddress\": \"93.146.254.172\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/authorize3d.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"authorize3d.do"
+							]
+						},
+						"description": "The /authorize3d method lets you use the Nuvei MPI service to perform a 3DS-only request. This method is called after the /initPayment method and returns the information regarding whether the merchant has to perform a challenge or if they receive a frictionless response.\n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#authorize3d](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#authorize3d)."
+					},
+					"response": []
+				},
+				{
+					"name": "Challenge ",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/html",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://3dsecuresafecharge.000webhostapp.com/3Dv2/showUrl.php?acsUrl={{acsUrl}}&creq={{cReq}}",
+							"protocol": "https",
+							"host": [
+								"3dsecuresafecharge",
+								"000webhostapp",
+								"com"
+							],
+							"path": [
+								"3Dv2",
+								"showUrl.php"
+							],
+							"query": [
+								{
+									"key": "acsUrl",
+									"value": "{{acsUrl}}"
+								},
+								{
+									"key": "creq",
+									"value": "{{cReq}}"
+								}
+							]
+						},
+						"description": "This next step simulates the challenge process.\r\n\r\nTo demonstrate this:\r\n1. Copy the URL provided into an HTML document and open it in a browser. Then click the proceed to issuer button that appears. \r\n\r\n2. An iFrame pops up inside the page. Click Success authentication in the window that appears."
+					},
+					"response": []
+				},
+				{
+					"name": "verify3d",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"dsTransID\", json.paymentOption.card.threeD.dsTransID);",
+									"postman.setEnvironmentVariable(\"cavv\", json.paymentOption.card.threeD.cavv);",
+									"postman.setEnvironmentVariable(\"eci\", json.paymentOption.card.threeD.eci);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('amount', '150');\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"amount\", \"currency\",\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\",\n    \"currency\": \"{{currency}}\",\n    \"amount\": \"{{amount}}\",\n    \"relatedTransactionId\": \"{{paymentTransactionId}}\",\n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000020951595032\",\n            \"cardHolderName\": \"CL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\"\n            }\n    },\n    \"billingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"shippingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"deviceDetails\": {\n        \"ipAddress\": \"93.146.254.172\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/verify3d.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"verify3d.do"
+							]
+						},
+						"description": "The /verify3d method lets you use the Nuvei MPI service to perform a 3DS-only request. This method is called after the /authorize3d method in case of a challenge.\n\nThis method retrieves the generic 3DS result (eci and cavv) that you need to send to your PSP or acquirer to benefit from the 3DS liability shift received from the Nuvei 3D Secure service.\n\nIf successful, you should see: \"status\": \"SUCCESS\".\n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#verify3d](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#verify3d)."
+					},
+					"response": []
+				}
+			],
+			"description": "This workflows demonstrates how as a merchant, you can consume only the 3D Secure authorisation and authentication from Nuvei and then continue to process them with other payment providers.\n\nThis workflow simulates a scenario in which you as a merchant use Nuvei for 3DS authorization and authentication and then process the payment with another provider.\n\nFor more information, see: [https://docs.nuvei.com/?p=94033/](https://docs.nuvei.com/?p=94033/).\n\nThe phases in this workflow appear below."
+		},
+		{
+			"name": "Recurring with 3DS",
+			"item": [
+				{
+					"name": "/getSessionToken.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"sessionToken\", json.sessionToken);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"timeStamp\"]));\r",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getSessionToken.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getSessionToken.do"
+							]
+						},
+						"description": "This method receives a merchant request and returns a unique session token. A call to this method is the first necessary step in processing any payment. The most important fields in the request are:\r\n    - merchantSiteId\r\n    - merchantId\r\n    - checksum, which embeds the merchant's secret\r\n\r\nThe unique token is created upon the initial successful authorization and represents the client session. \r\nFor subsequent calls to the session, the token must be provided for validation to ensure that it is still active and valid.\r\n\r\nFor more information, see https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken and https://docs.nuvei.com/?p=4583/\r\n"
+					},
+					"response": []
+				},
+				{
+					"name": "initPayment - 3DS",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"//postman.setEnvironmentVariable(\"relatedTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"initPaymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"threeDVersion\", json.paymentOption.card.threeD.version);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"currency\": \"USD\",\n    \"amount\": \"500\",\n    \"userTokenId\": \"recurringUser\",\n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000020951595032\",\n            \"cardHolderName\": \"FL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\",\n            \"threeD\": {\n                \"methodNotificationUrl\": \"www.ThisIsAMethodNotificationURL.com\",\n                \"platformType\": \"01\"\n            }\n        }\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/initPayment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"initPayment.do"
+							]
+						},
+						"description": "This method initiates the authorization and authentication process.\n\nThe response indicates whether the card supports 3DS and if it it does, which 3DS version it supports. For example:\n\n\"threeD\": {  \n\"methodUrl\": \"\",  \n\"version\": \"2.1.0\",  \n\"v2supported\": \"true\"  \n}\n\nindicates that the card supports 3DS version 2.1.0.\n\nIf \"v2supported\": \"false\", the card does not support 3DS.\n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#initpayment](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#initpayment)."
+					},
+					"response": []
+				},
+				{
+					"name": "/payment (initial MIT payment with 3DS)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"paymentTransactionId\", json.transactionId);",
+									"",
+									"postman.setEnvironmentVariable(\"userPaymentOptionId\", json.paymentOption.userPaymentOptionId);",
+									"",
+									""
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('amount', '150');\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"amount\", \"currency\",\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\",\n    \"currency\": \"{{currency}}\",\n    \"amount\": \"{{amount}}\",\n    \"relatedTransactionId\": \"{{initPaymentTransactionId}}\",\n    \"userTokenId\" : \"recurringUser\",\n    \"isRebilling\": \"0\",\n    \"rebillingType\": \"RECURRING\",\n    \n    \"paymentOption\": {\n        \"card\": {\n            \"cardNumber\": \"4000020951595032\",\n            \"cardHolderName\": \"FL-BRW1\",\n            \"expirationMonth\": \"12\",\n            \"expirationYear\": \"25\",\n            \"CVV\": \"217\",\n            \"threeD\": {\n                \"methodCompletionInd\": \"U\",\n                \"version\": \"{{threeDVersion}}\",\n                \"notificationURL\": \"http://wwww.Test-Notification-URL-After-The-Challange-Is-Complete-Which-Recieves-The-CRes-Message.com\",\n                \"merchantURL\": \"http://www.The-Merchant-Website-Fully-Quallified-URL.com\",\n                \"platformType\": \"02\",\n                \"v2AdditionalParams\": {\n                \t\n                    \"rebillExpiry\": \"20200101\",\n                    \"rebillFrequency\": \"13\"\n                    \n                },\n                \"browserDetails\": {\n                    \"acceptHeader\": \"text/html,application/xhtml+xml\",\n                    \"ip\": \"192.168.1.11\",\n                    \"javaEnabled\": \"TRUE\",\n                    \"javaScriptEnabled\": \"TRUE\",\n                    \"language\": \"EN\",\n                    \"colorDepth\": \"48\",\n                    \"screenHeight\": \"400\",\n                    \"screenWidth\": \"600\",\n                    \"timeZone\": \"0\",\n                    \"userAgent\": \"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47\"\n                }\n                }\n        }\n    },\n    \"billingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"shippingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"deviceDetails\": {\n        \"ipAddress\": \"93.146.254.172\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/payment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"payment.do"
+							]
+						},
+						"description": "The /payment method is called to initiate rebilling.  \nIn this first phase, 3DS data must be passed.\n\nWhen initiating recurring charges, the merchant must flag them with the parameter isRebilling. Now, pass in 0 – initial transaction from a recurring cycle (as compared to the later /payment call, when the merchant passes in 1 – subsequent transactions from recurring cycle.)\n\nThe following must also be set:\n\n- rebillingType as \"RECURRING\"\n    \n- rebillExpiry\n    \n- rebillFrequency\n    \n\nIn subsequent payments, the merchant must also specify:\n\n- relatedTransactionId: Represents the reference to the original transaction ID of the initial transaction.\n    \n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment)."
+					},
+					"response": []
+				},
+				{
+					"name": "/getSessionToken.do (for subsequent payment)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"sessionToken\", json.sessionToken);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"timeStamp\"]));\r",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getSessionToken.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getSessionToken.do"
+							]
+						},
+						"description": "See previous /payment method call."
+					},
+					"response": []
+				},
+				{
+					"name": "/payment (subsequent MIT payment)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"relatedTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"authCode\", json.authCode);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('amount', '10');\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"amount\", \"currency\",\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sessionToken\": \"{{sessionToken}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\",\n    \"relatedTransactionId\": \"{{paymentTransactionId}}\",\n    \"isRebilling\": \"1\",\n    \"userTokenId\": \"recurringUser\",\n    \"currency\": \"{{currency}}\",\n    \"amount\": \"{{amount}}\",\n    \"paymentOption\": {\n        \"userPaymentOptionId\": \"{{userPaymentOptionId}}\"\n    },\n    \"billingAddress\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"address\": \"340689 main St.\",\n        \"city\": \"London\",\n        \"country\": \"GB\",\n        \"email\": \"john.smith@safecharge.com\"\n    },\n    \"deviceDetails\": {\n        \"ipAddress\": \"93.146.254.172\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/payment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"payment.do"
+							]
+						},
+						"description": "The merchant must flag subsequent MIT payments with the parameter isRebilling but pass in 1, along with the relatedTransactionId for the initial MIT payment."
+					},
+					"response": []
+				}
+			],
+			"description": "This workflow simulates a scenario in which a merchant uses Nuvei's rebilling service to create and manage recurring card payments with the customer’s prior consent. They are sometimes called _merchant-initiated transaction (MIT)_ or _subsequent_ payments.\n\nThe MIT flow involves two or more transactions: an _initial_ MIT card payment and one or more _subsequent_ MIT card payments.\n\nInstead of Nuvei storing and managing the membership details and scheduling the recurring charges, merchants can use the /payment method to manage rebilling memberships and initiate the recurring charges.\n\nFor more information, see [https://docs.nuvei.com/?p=2001/#credit-card-recurring-payments-via-rest](https://docs.nuvei.com/?p=2001/#credit-card-recurring-payments-via-rest).\n\nThe phases in this workflow appear below."
+		},
+		{
+			"name": "Simple Auth-Settle scenario + void",
+			"item": [
+				{
+					"name": "/getSessionToken.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"sessionToken\", json.sessionToken);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"timeStamp\"]));\r",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getSessionToken.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getSessionToken.do"
+							]
+						},
+						"description": "This method receives a merchant request and returns a unique session token. A call to this method is the first necessary step in processing any payment. The most important fields in the request are:\r\n    - merchantSiteId\r\n    - merchantId\r\n    - checksum, which embeds the merchant's secret\r\n\r\nThe unique token is created upon the initial successful authorization and represents the client session. \r\nFor subsequent calls to the session, the token must be provided for validation to ensure that it is still active and valid.\r\n\r\nFor more information, see https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken and https://docs.nuvei.com/?p=4583/\r\n"
+					},
+					"response": []
+				},
+				{
+					"name": "/payment (auth)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"paymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"paymentAuthCode\", json.authCode);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('amount', '10');\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"amount\", \"currency\",\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \t\"sessionToken\": \"{{sessionToken}}\",\r\n  \"merchantId\": \"{{merchantId}}\",\r\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\r\n    \"clientRequestId\": \"{{clientRequestId}}\",\r\n    \"timeStamp\": \"{{timestamp}}\",\r\n    \"checksum\": \"{{checksum}}\",\r\n   \"currency\":\"{{currency}}\",\r\n   \"amount\":\"{{amount}}\",\r\n   \"transactionType\" : \"Auth\",\r\n   \"paymentOption\":{ \r\n      \"card\":{ \r\n         \"cardNumber\":\"4000020951595032\",\r\n         \"cardHolderName\":\"john smith\",\r\n         \"expirationMonth\":\"12\",\r\n         \"expirationYear\":\"25\",\r\n         \"CVV\":\"217\"\r\n       }\r\n   },\r\n   \"billingAddress\":{ \r\n      \"firstName\":\"John\",\r\n      \"lastName\":\"Smith\",\r\n      \"address\":\"340689 main St.\",\r\n      \"city\":\"London\",\r\n      \"country\":\"GB\",\r\n      \"email\":\"john.smith@safecharge.com\"\r\n   },\r\n   \"deviceDetails\":{ \r\n      \"ipAddress\":\"93.146.254.172\"\r\n   }\r\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/payment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"payment.do"
+							]
+						},
+						"description": "The /payment method sends a non-3DS, authorization-only request. In the root of the request, include \"transactionType\" : \"Auth\"."
+					},
+					"response": []
+				},
+				{
+					"name": "/ppp/api/settleTransaction.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);",
+									"",
+									"var json = JSON.parse(responseBody);",
+									"",
+									"postman.setEnvironmentVariable(\"settleTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"settleAuthCode\", json.authCode);",
+									"",
+									"var tests;",
+									"Petka.tests.responseCode(tests, responseCode.code);",
+									"Petka.tests.status(tests, json);",
+									"Petka.tests.version(tests, json);",
+									"Petka.tests.schema(tests, json, \"settleTransaction\");"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"clientUniqueId\",\"amount\",\"currency\",\"relatedTransactionId\",\"authCode\",\"descriptorMerchantName\",\"descriptorMerchantPhone\",\"comment\",\"urlDetails.notificationUrl\",\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"clientUniqueId\": \"{{clientRequestId}}\",\n    \"amount\": \"{{amount}}\",\n    \"currency\": \"EUR\",\n    \"relatedTransactionId\": \"{{paymentTransactionId}}\",\n    \"authCode\": \"{{paymentAuthCode}}\",\n    \"urlDetails\": {\n\t\t\"notificationUrl\": \"\"\n\t},\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/settleTransaction.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"settleTransaction.do"
+							]
+						},
+						"description": "The /settleTransaction method is used for partially or fully settling a previously performed authorization transaction.  \nSettlements are performed by providing the Auth transactionID along with the AuthCode related to it. The Settle request currency needs to match the original Auth transaction currency.\n\nFor more information, see [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#settleTransaction](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#settleTransaction)."
+					},
+					"response": []
+				},
+				{
+					"name": "getPaymentStatus",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{  \r\n\r\n\t\"sessionToken\": \"{{sessionToken}}\"\r\n \r\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getPaymentStatus.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getPaymentStatus.do"
+							]
+						},
+						"description": "The /getPaymentStatus method retrieves the status of a payment recently performed. It receives the session ID and queries if a payment was performed.\n\nUse this method when you need to retrieve the status of a payment to verify a payment response, or to check whether the response was not received or was not received correctly or completely.\n\nFor more information, see [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getPaymentStatus](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getPaymentStatus)."
+					},
+					"response": []
+				},
+				{
+					"name": "/ppp/api/voidTransaction.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);",
+									"",
+									"var json = JSON.parse(responseBody);",
+									"",
+									"var tests;",
+									"Petka.tests.responseCode(tests, responseCode.code);",
+									"Petka.tests.status(tests, json);",
+									"Petka.tests.version(tests, json);",
+									"Petka.tests.schema(tests, json, \"refundTransaction\");"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);",
+									"",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());",
+									"",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));",
+									"",
+									"// Checksum must be calculated at the end.",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request, [\"merchantId\", \"merchantSiteId\", \"clientRequestId\", \"clientUniqueId\", \"amount\", \"currency\", \"relatedTransactionId\", \"authCode\", \"comment\", \"urlDetails.notificationUrl\", \"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"clientUniqueId\": \"{{clientRequestId}}\",\n    \"amount\": \"{{amount}}\",\n    \"currency\": \"EUR\",\n    \"relatedTransactionId\": \"{{settleTransactionId}}\",\n    \"authCode\": \"{{settleAuthCode}}\",\n    \"urlDetails\": {\n\t\t\"notificationUrl\": \"\"\n\t},\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/voidTransaction.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"voidTransaction.do"
+							]
+						},
+						"description": "Use the /voidTransaction method to void a settled transaction. In the root of the request, include relatedTransactionId."
+					},
+					"response": []
+				}
+			],
+			"description": "This workflow simulates a scenario in which:\n\n- The /payment method performs authorization only, and funds are not transferred.\n    \n- The funds are partially or fully settled only after the merchant submits a follow-up /settleTransaction request.  \n    Multiple, partial settlements can be performed for up to the original authorized amount.\n    \n- The merchant submits a /getPaymentStatus request to retrieve the status of a previously performed payment.\n    \n- The merchant submits a /voidTransaction request that voids a Settle transaction.\n    \n\nFor more information, see: [https://docs.nuvei.com/?p=2130/](https://docs.nuvei.com/?p=2130/).\n\nThe phases in this workflow appear below."
+		},
+		{
+			"name": "Simple Sale payment + partial refund",
+			"item": [
+				{
+					"name": "/getSessionToken.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"sessionToken\", json.sessionToken);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"timeStamp\"]));\r",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getSessionToken.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getSessionToken.do"
+							]
+						},
+						"description": "This method receives a merchant request and returns a unique session token. A call to this method is the first necessary step in processing any payment. The most important fields in the request are:  \n\\- merchantSiteId  \n\\- merchantId  \n\\- checksum, which embeds the merchant's secret\n\nThe unique token is created upon the initial successful authorization and represents the client session.  \nFor subsequent calls to the session, the token must be provided for validation to ensure that it is still active and valid.\n\nFor more information, see [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken) and [https://docs.nuvei.com/?p=4583/](https://docs.nuvei.com/?p=4583/)."
+					},
+					"response": []
+				},
+				{
+					"name": "/payment (transactionType=Sale)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"paymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"paymentAuthCode\", json.authCode);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('amount', '10');\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"amount\", \"currency\",\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \t\"sessionToken\": \"{{sessionToken}}\",\r\n    \"merchantId\": \"{{merchantId}}\",\r\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\r\n    \"clientRequestId\": \"{{clientRequestId}}\",\r\n    \"timeStamp\": \"{{timestamp}}\",\r\n    \"checksum\": \"{{checksum}}\",\r\n    \"currency\":\"{{currency}}\",\r\n    \"amount\":\"100\",\r\n    \"transactionType\" : \"Sale\",\r\n    \"paymentOption\":{ \r\n      \"card\":{ \r\n         \"cardNumber\":\"4000020951595032\",\r\n         \"cardHolderName\":\"john smith\",\r\n         \"expirationMonth\":\"12\",\r\n         \"expirationYear\":\"25\",\r\n         \"CVV\":\"217\"\r\n       }\r\n    },\r\n    \"billingAddress\":{ \r\n      \"firstName\":\"John\",\r\n      \"lastName\":\"Smith\",\r\n      \"address\":\"340689 main St.\",\r\n      \"city\":\"London\",\r\n      \"country\":\"GB\",\r\n      \"email\":\"john.smith@safecharge.com\"\r\n    },\r\n    \"deviceDetails\":{ \r\n      \"ipAddress\":\"93.146.254.172\"\r\n    }\r\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/payment.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"payment.do"
+							]
+						},
+						"description": "The /payment method is used to execute the sale transaction.\n\nThis phase represents the original sale, for which two partial refunds will follow.\n\nThe \"transactionType\" is \"Sale\" here.\n\nFor more information, see: [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#payment)."
+					},
+					"response": []
+				},
+				{
+					"name": "/refundTransaction.do (partial #1)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);",
+									"",
+									"var json = JSON.parse(responseBody);",
+									"",
+									"var tests;",
+									"Petka.tests.responseCode(tests, responseCode.code);",
+									"Petka.tests.status(tests, json);",
+									"Petka.tests.version(tests, json);",
+									"Petka.tests.schema(tests, json, \"refundTransaction\");"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);",
+									"",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());",
+									"",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));",
+									"",
+									"// Checksum must be calculated at the end.",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request, [\"merchantId\", \"merchantSiteId\", \"clientRequestId\", \"clientUniqueId\", \"amount\", \"currency\", \"relatedTransactionId\", \"authCode\", \"comment\", \"urlDetails.notificationUrl\", \"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"clientUniqueId\": \"{{clientRequestId}}\",\n    \"amount\": \"10\",\n    \"currency\": \"EUR\",\n    \"relatedTransactionId\": \"{{settleTransactionId}}\",\n    \"authCode\": \"{{settleAuthCode}}\",\n    \"urlDetails\": {\n\t\t\"notificationUrl\": \"\"\n\t},\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/refundTransaction.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"refundTransaction.do"
+							]
+						},
+						"description": "The /refundTransaction method is used for refunding a previously settled transaction.\n\nIn this case, an initial partial refund is performed, followed by a second partial refund in the next step. Multiple requests can follow to make up the original amount of the sale transaction.\n\nRefunds are performed by providing the sale transactionID along with the AuthCode related to it. The refund request currency needs to match the original Sale transaction currency.\n\nThe \"transactionType\" is \"Credit\" here."
+					},
+					"response": []
+				},
+				{
+					"name": "/refundTransaction.do (partial #2)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);",
+									"",
+									"var json = JSON.parse(responseBody);",
+									"",
+									"var tests;",
+									"Petka.tests.responseCode(tests, responseCode.code);",
+									"Petka.tests.status(tests, json);",
+									"Petka.tests.version(tests, json);",
+									"Petka.tests.schema(tests, json, \"refundTransaction\");"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);",
+									"",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());",
+									"",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));",
+									"",
+									"// Checksum must be calculated at the end.",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request, [\"merchantId\", \"merchantSiteId\", \"clientRequestId\", \"clientUniqueId\", \"amount\", \"currency\", \"relatedTransactionId\", \"authCode\", \"comment\", \"urlDetails.notificationUrl\", \"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantId\": \"{{merchantId}}\",\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"clientUniqueId\": \"{{clientRequestId}}\",\n    \"amount\": \"10\",\n    \"currency\": \"EUR\",\n    \"relatedTransactionId\": \"{{settleTransactionId}}\",\n    \"authCode\": \"{{settleAuthCode}}\",\n    \"urlDetails\": {\n\t\t\"notificationUrl\": \"\"\n\t},\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/refundTransaction.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"refundTransaction.do"
+							]
+						},
+						"description": "The /refundTransaction method is used for refunding a previously settled transaction.\r\n\r\nThis step represents the second partial refund.\r\n\r\nThe \"transactionType\" is \"Credit\" here.\r\n"
+					},
+					"response": []
+				}
+			],
+			"description": "This workflow simulates a partial refund of a previously settled transaction.\r\n\r\nIf a partial (lower than original amount) refund has been performed, multiple requests can follow to reach up to the original amount of the Sale transaction. \r\n\r\nRefunds are performed by providing the Sale transactionID along with the AuthCode related to it. The refund request currency needs to match the original Sale transaction currency.\r\n\r\nFor more information, see: https://docs.nuvei.com/?p=2128/.\r\n\r\nThe following are the phases in this workflow:"
+		},
+		{
+			"name": "Payout flow",
+			"item": [
+				{
+					"name": "/createUser.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"paymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"paymentAuthCode\", json.authCode);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\", \"merchantSiteId\", \"userTokenId\",\"clientRequestId\", \"firstName\", \"lastName\",\"address\", \"state\", \"city\", \"zip\", \"countryCode\", \"phone\", \"locale\", \"email\", \"county\" ,\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\t\"merchantSiteId\": \"{{merchantSiteId}}\",\r\n\t\"merchantId\": \"{{merchantId}}\",\r\n\t\"userTokenId\": \"testUserToken333\",\r\n\t\"clientRequestId\": \"{{clientRequestId}}\",\r\n\t\"timeStamp\": \"{{timestamp}}\",\r\n\t\"firstName\": \"John\",\r\n    \"lastName\": \"Smith\", \r\n    \"address\": \"some street\",\r\n    \"state\": \"\",\r\n    \"city\":\"\",\r\n    \"zip\":\"\",\r\n    \"phone\":\"\",\r\n    \"locale\": \"en_UK\",\r\n    \"email\": \"john.smith@test.com\", \r\n    \"countryCode\": \"GB\",\r\n    \"dateOfBirth\": \"\",\r\n    \"county\":\"\",\r\n    \"checksum\": \"{{checksum}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/createUser.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"createUser.do"
+							]
+						},
+						"description": "A userTokenId is a field in the Nuvei system containing the user's identifier that you use in your (merchant) system. If you do not have a userTokenId registered in the Nuvei system for this user, then register one as follows. Send a /createUser request and include an email address."
+					},
+					"response": []
+				},
+				{
+					"name": "/getSessionToken.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"paymentTransactionId\", json.transactionId);",
+									"postman.setEnvironmentVariable(\"paymentAuthCode\", json.authCode);"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"timeStamp\"]));\r",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\n    \"merchantId\": \"{{merchantId}}\",\n    \"clientRequestId\": \"{{clientRequestId}}\",\n    \"timeStamp\": \"{{timestamp}}\",\n    \"checksum\": \"{{checksum}}\"\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/getSessionToken.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"getSessionToken.do"
+							]
+						},
+						"description": "This method receives a merchant request and returns a unique session token. A call to this method is the first necessary step in processing any payout. The most important fields in the request are:  \n\\- merchantSiteId  \n\\- merchantId  \n\\- checksum, which embeds the merchant's secret\n\nThe unique token is created upon the initial successful authorization and represents the client session.  \nFor subsequent calls to the session, the token must be provided for validation to ensure that it is still active and valid.\n\nFor more information, see [https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken](https://docs.nuvei.com/api/main/indexMain_v1_0.html?json#getSessionToken) and [https://docs.nuvei.com/?p=4583/](https://docs.nuvei.com/?p=4583/)."
+					},
+					"response": []
+				},
+				{
+					"name": "/payout.do",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);",
+									"",
+									"var json = JSON.parse(responseBody);",
+									"",
+									"var tests;",
+									"Petka.tests.responseCode(tests, responseCode.code);",
+									"Petka.tests.status(tests, json);",
+									"Petka.tests.version(tests, json);",
+									"Petka.tests.schema(tests, json, \"refundTransaction\");"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var Petka = eval(globals.Petka);\r",
+									"\r",
+									"postman.setEnvironmentVariable('amount', '10');\r",
+									"\r",
+									"postman.setEnvironmentVariable('timestamp', Petka.getTimeStamp());\r",
+									"\r",
+									"postman.setEnvironmentVariable('clientRequestId', Petka.getClientUniqueId(request));\r",
+									"\r",
+									"// Checksum must be calculated at the end.\r",
+									"postman.setEnvironmentVariable('checksum', Petka.getCalculatedChecksum(request,[\"merchantId\",\"merchantSiteId\",\"clientRequestId\",\"amount\", \"currency\",\"timeStamp\"]));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"sessionToken\": \"{{sessionToken}}\",\r\n    \"merchantId\": \"{{merchantId}}\",\r\n    \"merchantSiteId\": \"{{merchantSiteId}}\",\r\n    \"clientRequestId\": \"{{clientRequestId}}\",\r\n    \"clientUniqueId\": \"{{clientUniqueId}}\",\r\n\t\"userTokenId\": \"testUserToken44\",\r\n    \"cardData\":{ \r\n         \"cardNumber\":\"4000020951595032\",\r\n         \"cardHolderName\":\"john smith\",\r\n         \"expirationMonth\":\"12\",\r\n         \"expirationYear\":\"25\",\r\n         \"CVV\":\"217\"\r\n    },\r\n    \"currency\": \"EUR\",\r\n    \"amount\": \"5\",\r\n    \"deviceDetails\": {\r\n        \"ipAddress\": \"127.0.0.1\"\r\n    },\r\n    \"customData\": \"My Test GGG\",\r\n    \"timeStamp\": \"{{timestamp}}\",\r\n    \"checksum\": \"{{checksum}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{url}}/ppp/api/v1/payout.do",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ppp",
+								"api",
+								"v1",
+								"payout.do"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "This workflow simulates a payout flow.\n\nA /payout request allows you to transfer funds from your account to the user's (customer) account, without any connection to a previous transaction, for example, to pay out winnings or refunds.\n\nFor more information, see: [https://docs.nuvei.com/?p=2132/](https://docs.nuvei.com/?p=2132/).\n\nThe phases in this workflow appear below."
+		}
+	]
+}
