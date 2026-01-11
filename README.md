@@ -37,6 +37,11 @@ Browser-based emulator for testing Nuvei REST API 1.0 payment flows. Replaces Po
 1. [Cloudflare account](https://dash.cloudflare.com/sign-up)
 2. [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 
+### Branch Strategy
+
+- **`main` branch**: Stable production version
+- **`dev` branch**: Testing and development version
+
 ### Steps
 
 1. **Install dependencies**:
@@ -45,22 +50,31 @@ Browser-based emulator for testing Nuvei REST API 1.0 payment flows. Replaces Po
    cd frontend && npm install && cd ..
    ```
 
-2. **Build frontend**:
-   ```bash
-   cd frontend && npm run build && cd ..
-   ```
-
-3. **Login to Cloudflare**:
+2. **Login to Cloudflare**:
    ```bash
    npx wrangler login
    ```
 
-4. **Deploy**:
+3. **Deploy to Development** (for testing new features):
    ```bash
-   npm run deploy
+   git checkout dev
+   npm run deploy:dev
    ```
+   Live at: `https://nuvei-api-emulator-dev.<your-subdomain>.workers.dev`
 
-The emulator will be live at `https://nuvei-api-emulator.<your-subdomain>.workers.dev`
+4. **Deploy to Production** (stable release):
+   ```bash
+   git checkout main
+   npm run deploy:prod
+   ```
+   Live at: `https://nuvei-api-emulator.<your-subdomain>.workers.dev`
+
+### Development Workflow
+
+1. Make changes on the `dev` branch
+2. Test by deploying to dev environment: `npm run deploy:dev`
+3. When satisfied, merge `dev` → `main`
+4. Deploy to production: `npm run deploy:prod`
 
 ## API Endpoints
 

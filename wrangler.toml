@@ -5,6 +5,14 @@ compatibility_date = "2024-12-01"
 [assets]
 directory = "./frontend/dist"
 
-# Development settings
+# Local development settings
 [dev]
 port = 8787
+
+# Production environment (default)
+# Deploys to: nuvei-api-emulator.workers.dev
+
+# Development/Testing environment
+[env.dev]
+name = "nuvei-api-emulator-dev"
+# Deploys to: nuvei-api-emulator-dev.workers.dev
