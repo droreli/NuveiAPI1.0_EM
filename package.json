@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:prod": "npm run check && cd frontend && npm run build && cd .. && wrangler deploy --env production",
+    "deploy:dev": "npm run check && cd frontend && npm run build && cd .. && wrangler deploy --env development",
     "build:frontend": "cd frontend && npm run build",
     "preview": "wrangler dev --remote",
     "check": "tsc --noEmit",
