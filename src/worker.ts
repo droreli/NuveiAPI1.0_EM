@@ -47,6 +47,8 @@ interface PaymentRequest {
   currency: string;
   notificationUrl?: string;
   methodCompletionInd?: string;
+  featureTest?: string;
+  featureOption?: string;
 }
 
 interface LiabilityShiftRequest {
@@ -203,7 +205,7 @@ async function handleTestEnv(request: Request): Promise<Response> {
 async function handle3DSPayment(request: Request): Promise<Response> {
   try {
     const body = await request.json() as PaymentRequest;
-    const { env, card, amount, currency, notificationUrl, methodCompletionInd } = body;
+    const { env, card, amount, currency, notificationUrl, methodCompletionInd, featureTest, featureOption } = body;
 
     if (!env?.merchantId || !env?.merchantSiteId || !env?.merchantKey) {
       return errorResponse('Missing required credentials');
@@ -223,6 +225,43 @@ async function handle3DSPayment(request: Request): Promise<Response> {
       cardNumber: card.number,
       cardHolder: card.holderName,
     };
+    const featureTestId = typeof featureTest === 'string' ? featureTest : '';
+    const featureOptionValue = typeof featureOption === 'string' ? featureOption : '';
+
+    const notificationUrlKeys = (() => {
+      if (
+        featureTestId === 'notificationUrlCasing' &&
+        ['notificationURL', 'notificationUrl', 'NotificationUrl'].includes(featureOptionValue)
+      ) {
+        return [featureOptionValue];
+      }
+      return ['notificationURL'];
+    })();
+    const methodNotificationUrlMode = featureTestId === 'methodNotificationUrlMode' && featureOptionValue === 'off'
+      ? 'off'
+      : 'on';
+    const browserDetailsMode = featureTestId === 'browserDetailsMode' &&
+      ['full', 'minimal', 'omit'].includes(featureOptionValue)
+        ? featureOptionValue
+        : 'full';
+    const platformType = featureTestId === 'platformType' && ['01', '02'].includes(featureOptionValue)
+      ? featureOptionValue
+      : '02';
+    const challengePreference = featureTestId === 'challengePreference' &&
+      ['01', '02', '03', '04'].includes(featureOptionValue)
+        ? featureOptionValue
+        : '01';
+    const challengeWindowSize = featureTestId === 'challengeWindowSize' &&
+      ['01', '02', '03', '04', '05'].includes(featureOptionValue)
+        ? featureOptionValue
+        : '05';
+
+    if (featureTestId) {
+      context.featureTest = featureTestId;
+    }
+    if (featureOptionValue) {
+      context.featureOption = featureOptionValue;
+    }
 
     // ===== STEP 1: getSessionToken =====
     const timestamp1 = generateTimestamp();
@@ -276,6 +315,15 @@ async function handle3DSPayment(request: Request): Promise<Response> {
     const clientRequestId2 = generateRequestId();
     const userTokenId = `user_${Date.now()}`;
 
+    const methodNotificationUrl = notificationUrl?.replace('/3ds-notify', '/3ds-method-notify') ||
+      `https://nuvei-api-emulator.ndocs.workers.dev/api/3ds-method-notify`;
+    const initThreeD: Record<string, unknown> = {
+      platformType, // Browser/App
+    };
+    if (methodNotificationUrlMode !== 'off') {
+      initThreeD.methodNotificationUrl = methodNotificationUrl;
+    }
+
     const initPaymentBody = {
       merchantId: env.merchantId,
       merchantSiteId: env.merchantSiteId,
@@ -291,10 +339,7 @@ async function handle3DSPayment(request: Request): Promise<Response> {
           expirationMonth: card.expMonth,
           expirationYear: card.expYear,
           CVV: card.cvv,
-          threeD: {
-            methodNotificationUrl: notificationUrl?.replace('/3ds-notify', '/3ds-method-notify') || `https://nuvei-api-emulator.ndocs.workers.dev/api/3ds-method-notify`,
-            platformType: '02', // Browser
-          },
+          threeD: initThreeD,
         },
       },
       deviceDetails: {
@@ -357,6 +402,28 @@ async function handle3DSPayment(request: Request): Promise<Response> {
     context.methodPayload = methodPayload;
     context.userTokenId = userTokenId;
 
+    const resolvedMethodCompletionInd = (() => {
+      const fallback = methodCompletionInd || (methodUrl ? 'Y' : 'U');
+      if (featureTestId !== 'methodCompletionInd') {
+        return fallback;
+      }
+      if (!featureOptionValue || featureOptionValue === 'auto') {
+        return methodUrl ? 'Y' : 'U';
+      }
+      if (['Y', 'N', 'U'].includes(featureOptionValue)) {
+        return featureOptionValue;
+      }
+      return fallback;
+    })();
+
+    context.methodCompletionInd = resolvedMethodCompletionInd;
+    context.platformType = platformType;
+    context.challengePreference = challengePreference;
+    context.challengeWindowSize = challengeWindowSize;
+    context.notificationUrlKeys = notificationUrlKeys;
+    context.methodNotificationUrlMode = methodNotificationUrlMode;
+    context.browserDetailsMode = browserDetailsMode;
+
     // ===== STEP 3: payment.do (with 3DS data) =====
     const timestamp3 = generateTimestamp();
     const clientRequestId3 = generateRequestId();
@@ -366,6 +433,50 @@ async function handle3DSPayment(request: Request): Promise<Response> {
       [env.merchantId, env.merchantSiteId, clientRequestId3, amount, currency, timestamp3, env.merchantKey],
       'SHA256'
     );
+
+    const browserDetailsFull = {
+      acceptHeader: 'text/html,application/xhtml+xml',
+      ip: '192.168.1.1',
+      javaEnabled: 'TRUE',
+      javaScriptEnabled: 'TRUE',
+      language: 'EN',
+      colorDepth: '24',
+      screenHeight: '1080',
+      screenWidth: '1920',
+      timeZone: '0',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    };
+    const browserDetailsMinimal = {
+      acceptHeader: 'text/html,application/xhtml+xml',
+      ip: '192.168.1.1',
+      language: 'EN',
+      screenHeight: '1080',
+      screenWidth: '1920',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    };
+
+    const threeDRequest: Record<string, unknown> = {
+      methodCompletionInd: resolvedMethodCompletionInd,
+      version: threeDVersion,
+      merchantURL: 'https://example.com',
+      platformType,
+      v2AdditionalParams: {
+        challengePreference,
+        challengeWindowSize,
+      },
+    };
+
+    if (browserDetailsMode !== 'omit') {
+      threeDRequest.browserDetails = browserDetailsMode === 'minimal'
+        ? browserDetailsMinimal
+        : browserDetailsFull;
+    }
+
+    if (notificationUrl) {
+      for (const key of notificationUrlKeys) {
+        threeDRequest[key] = notificationUrl;
+      }
+    }
 
     const paymentBody: Record<string, unknown> = {
       sessionToken,
@@ -385,29 +496,7 @@ async function handle3DSPayment(request: Request): Promise<Response> {
           expirationMonth: card.expMonth,
           expirationYear: card.expYear,
           CVV: card.cvv,
-          threeD: {
-            methodCompletionInd: methodCompletionInd || (methodUrl ? 'Y' : 'U'),
-            version: threeDVersion,
-            notificationURL: notificationUrl,
-            merchantURL: 'https://example.com',
-            platformType: '02',
-            v2AdditionalParams: {
-              challengePreference: '01',
-              challengeWindowSize: '05',
-            },
-            browserDetails: {
-              acceptHeader: 'text/html,application/xhtml+xml',
-              ip: '192.168.1.1',
-              javaEnabled: 'TRUE',
-              javaScriptEnabled: 'TRUE',
-              language: 'EN',
-              colorDepth: '24',
-              screenHeight: '1080',
-              screenWidth: '1920',
-              timeZone: '0',
-              userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            },
-          },
+          threeD: threeDRequest,
         },
       },
       billingAddress: {
@@ -480,6 +569,9 @@ async function handle3DSPayment(request: Request): Promise<Response> {
     context.paymentTransactionId = paymentData.transactionId;
     context.transactionStatus = paymentData.transactionStatus;
     context.authCode = paymentData.authCode;
+
+    // Store as internal DMN for webhook visibility
+    storeInternalDmn('Payment (3DS)', 'payment.do', paymentData);
 
     // Check if 3DS challenge is required
     if (paymentData.transactionStatus === 'REDIRECT' && acsUrl && cReq) {
@@ -570,7 +662,17 @@ async function handleLiabilityShift(request: Request): Promise<Response> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(paymentBody),
     });
-    const data = await response.json() as Record<string, unknown>;
+    const rawBody = await response.text();
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(rawBody) as Record<string, unknown>;
+    } catch {
+      data = {
+        rawBody,
+        httpStatus: response.status,
+        parseError: 'Non-JSON response from payment.do',
+      };
+    }
 
     // Store as internal DMN for webhook visibility - this is the final payment after 3DS
     storeInternalDmn('Payment (Post 3DS)', 'payment.do', data);
@@ -1455,6 +1557,9 @@ async function handleApmPayment(request: Request): Promise<Response> {
     const result = await response.json() as Record<string, unknown>;
 
     console.log('APM Payment Response:', JSON.stringify(result, null, 2));
+
+    // Store as internal DMN for webhook visibility
+    storeInternalDmn('APM Payment', 'payment.do', result);
 
     // Check if we got a redirect URL
     const redirectUrl = (

@@ -122,12 +122,58 @@ const TEST_CARDS: TestCard[] = [
 
 // Feature test options
 const FEATURE_OPTIONS = [
-  { id: 'notificationUrlCasing', name: 'notificationUrl Casing', description: 'Tests how Nuvei handles different casing of the notification URL parameter in the threeD object.' },
+  { id: 'notificationUrlCasing', name: 'notificationUrl Casing', description: 'Tests how Nuvei handles different casing of the notification URL parameter in the threeD object (non-canonical casing may fail).' },
   { id: 'methodCompletionInd', name: 'methodCompletionInd', description: 'Test 3DS method completion indicator values (Y, N, U).' },
+  { id: 'methodNotificationUrlMode', name: 'methodNotificationUrlMode', description: 'Toggle 3DS methodNotificationUrl in initPayment (on/off).' },
   { id: 'platformType', name: 'platformType', description: 'Test different platform types (01=App, 02=Browser).' },
   { id: 'challengePreference', name: 'challengePreference', description: 'Test challenge preference values for 3DS.' },
   { id: 'challengeWindowSize', name: 'challengeWindowSize', description: 'Test different challenge window sizes.' },
+  { id: 'browserDetailsMode', name: 'browserDetailsMode', description: 'Test browserDetails payload completeness (full/minimal/omit).' },
 ];
+
+const FEATURE_OPTION_VALUES: Record<string, Array<{ value: string; label: string }>> = {
+  notificationUrlCasing: [
+    { value: 'notificationURL', label: 'Capital "URL" (docs example)' },
+    { value: 'notificationUrl', label: 'camelCase' },
+    { value: 'NotificationUrl', label: 'PascalCase' },
+  ],
+  methodCompletionInd: [
+    { value: 'auto', label: 'Auto (based on methodUrl)' },
+    { value: 'Y', label: 'Y - Method completed' },
+    { value: 'N', label: 'N - Not completed' },
+    { value: 'U', label: 'U - Unavailable/unknown' },
+  ],
+  methodNotificationUrlMode: [
+    { value: 'on', label: 'Include methodNotificationUrl' },
+    { value: 'off', label: 'Omit methodNotificationUrl' },
+  ],
+  platformType: [
+    { value: '02', label: '02 - Browser' },
+    { value: '01', label: '01 - App' },
+  ],
+  challengePreference: [
+    { value: '01', label: '01 - No preference' },
+    { value: '02', label: '02 - No challenge requested' },
+    { value: '03', label: '03 - Challenge requested' },
+    { value: '04', label: '04 - Challenge mandate' },
+  ],
+  challengeWindowSize: [
+    { value: '01', label: '01 - 250x400' },
+    { value: '02', label: '02 - 390x400' },
+    { value: '03', label: '03 - 500x600' },
+    { value: '04', label: '04 - 600x400' },
+    { value: '05', label: '05 - Full screen' },
+  ],
+  browserDetailsMode: [
+    { value: 'full', label: 'Full browserDetails payload' },
+    { value: 'minimal', label: 'Minimal browserDetails payload' },
+    { value: 'omit', label: 'Omit browserDetails' },
+  ],
+};
+
+const DEFAULT_FEATURE_OPTION_BY_TEST = Object.fromEntries(
+  Object.entries(FEATURE_OPTION_VALUES).map(([key, options]) => [key, options[0]?.value || ''])
+) as Record<string, string>;
 
 type TabId = 'payment' | 'operations' | 'webhooks' | 'lookup' | 'cardinfo' | 'mcp' | 'payouts' | 'upo' | 'apms' | 'scenarios';
 
@@ -137,6 +183,43 @@ const DEFAULT_CREDENTIALS: EnvConfig = {
   merchantSiteId: '',
   merchantKey: '',
   baseUrl: 'https://ppp-test.safecharge.com',
+};
+
+const EMPTY_APM_FIELDS = {
+  AccountNumber: '',
+  RoutingNumber: '',
+  SECCode: 'WEB',
+  account_id: '',
+  nettelerAccount: '',
+  BIC: '',
+  bankId: ''
+};
+
+const buildApmFields = (paymentMethod: string) => {
+  const fields = { ...EMPTY_APM_FIELDS };
+  const name = paymentMethod.toLowerCase();
+
+  if (name.includes('ach')) {
+    fields.AccountNumber = '1234567890';
+    fields.RoutingNumber = '123456789';
+    fields.SECCode = 'WEB';
+  }
+  if (name.includes('ideal')) {
+    fields.BIC = 'TESTBANK';
+  }
+  if (name.includes('moneybookers')) {
+    fields.account_id = 'partnersuccess-s2p@nuvei.com';
+    fields.nettelerAccount = fields.account_id;
+  }
+  if (name.includes('neteller')) {
+    fields.account_id = 'integration-international@nuvei.com';
+    fields.nettelerAccount = fields.account_id;
+  }
+  if (name.includes('open_banking')) {
+    fields.bankId = 'ob-test-bank';
+  }
+
+  return fields;
 };
 
 function App() {
@@ -154,9 +237,10 @@ function App() {
 
   // Payment settings
   const [selectedCardId, setSelectedCardId] = useState('cl-visa');
-  const [cardResponseType, setCardResponseType] = useState('');
   const [featureTest, setFeatureTest] = useState('notificationUrlCasing');
-  const [featureOption, setFeatureOption] = useState('notificationURL');
+  const [featureOptionsByTest, setFeatureOptionsByTest] = useState<Record<string, string>>(
+    DEFAULT_FEATURE_OPTION_BY_TEST
+  );
   
   // Card details - initialize from default card
   const defaultCard = TEST_CARDS.find(c => c.id === 'cl-visa') || TEST_CARDS[0];
@@ -253,6 +337,8 @@ function App() {
   // APMs
   const [apmCountry, setApmCountry] = useState('US');
   const [apmCurrency, setApmCurrency] = useState('USD');
+  const [apmRedirectMode, setApmRedirectMode] = useState<'auto' | 'manual'>('auto');
+  const [apmUserTokenId, setApmUserTokenId] = useState('');
   const [apmList, setApmList] = useState<Array<{ paymentMethod: string; paymentMethodDisplayName?: unknown; logoURL?: string }>>([]);
   const [apmLoading, setApmLoading] = useState(false);
   const [apmError, setApmError] = useState<string | null>(null);
@@ -270,15 +356,7 @@ function App() {
   // APM Field Collection Modal
   const [showApmFieldsModal, setShowApmFieldsModal] = useState(false);
   const [selectedApmForPayment, setSelectedApmForPayment] = useState<any>(null);
-  const [apmFields, setApmFields] = useState<Record<string, string>>({
-    AccountNumber: '',
-    RoutingNumber: '',
-    SECCode: 'WEB',
-    account_id: '',
-    nettelerAccount: '',
-    BIC: '',
-    bankId: ''
-  });
+  const [apmFields, setApmFields] = useState<Record<string, string>>({ ...EMPTY_APM_FIELDS });
 
   const getApmRules = (pm: string) => {
     const name = pm.toLowerCase();
@@ -335,6 +413,7 @@ function App() {
           amount: amount,
           currency: apmCurrency,
           country: apmCountry,
+          userTokenId: apmUserTokenId || undefined,
           firstName: cardHolder.split(' ')[0] || 'Test',
           lastName: cardHolder.split(' ').slice(1).join(' ') || 'User',
           email: 'test@example.com',
@@ -350,28 +429,35 @@ function App() {
       console.log('APM Payment response:', result);
       
       if (result.redirectUrl) {
-        // Open redirect URL in popup
-        const popup = window.open(
-          result.redirectUrl,
-          'apm_payment',
-          'width=600,height=700,scrollbars=yes,resizable=yes'
-        );
-        
-        if (popup) {
+        if (apmRedirectMode === 'auto') {
+          // Open redirect URL in popup
+          const popup = window.open(
+            result.redirectUrl,
+            'apm_payment',
+            'width=600,height=700,scrollbars=yes,resizable=yes'
+          );
+          
+          if (popup) {
+            setApmPaymentResult({
+              redirectUrl: result.redirectUrl,
+              result: result.result
+            });
+            
+            // Check if popup was closed without completing
+            const checkClosed = setInterval(() => {
+              if (popup.closed) {
+                clearInterval(checkClosed);
+                fetchWebhooks(); // Refresh webhooks in case DMN was received
+              }
+            }, 1000);
+          } else {
+            setApmError('Popup blocked! Please allow popups for this site.');
+          }
+        } else {
           setApmPaymentResult({
             redirectUrl: result.redirectUrl,
             result: result.result
           });
-          
-          // Check if popup was closed without completing
-          const checkClosed = setInterval(() => {
-            if (popup.closed) {
-              clearInterval(checkClosed);
-              fetchWebhooks(); // Refresh webhooks in case DMN was received
-            }
-          }, 1000);
-        } else {
-          setApmError('Popup blocked! Please allow popups for this site.');
         }
       } else if (result.error) {
         setApmError(result.error);
@@ -425,6 +511,18 @@ function App() {
       }
     }
   }, [selectedCardId]);
+
+  // Ensure each feature has a valid selected option
+  useEffect(() => {
+    const options = FEATURE_OPTION_VALUES[featureTest] || [];
+    setFeatureOptionsByTest((prev) => {
+      const current = prev[featureTest];
+      if (current && options.some((opt) => opt.value === current)) {
+        return prev;
+      }
+      return { ...prev, [featureTest]: options[0]?.value || '' };
+    });
+  }, [featureTest]);
 
   // Update card details when selection changes
   useEffect(() => {
@@ -641,7 +739,7 @@ function App() {
       currency,
       notificationUrl,
       featureTest,
-      featureOption,
+      featureOption: selectedFeatureOption,
     };
 
     setRequestData(requestPayload);
@@ -653,7 +751,17 @@ function App() {
         body: JSON.stringify(requestPayload),
       });
 
-      const result = await response.json();
+      const rawBody = await response.text();
+      let result: Record<string, unknown>;
+      try {
+        result = JSON.parse(rawBody) as Record<string, unknown>;
+      } catch {
+        result = {
+          error: 'Non-JSON response from /api/payment/3ds',
+          httpStatus: response.status,
+          rawBody,
+        };
+      }
       setResponseData(result);
       
       // Update flow steps
@@ -912,6 +1020,9 @@ function App() {
     return acc;
   }, {} as Record<string, TestCard[]>);
 
+  const currentFeatureOptions = FEATURE_OPTION_VALUES[featureTest] || [];
+  const selectedFeatureOption = featureOptionsByTest[featureTest] ?? currentFeatureOptions[0]?.value ?? '';
+
   const tabs: { id: TabId; label: string; icon: string }[] = [
     { id: 'payment', label: 'Payment', icon: '💳' },
     { id: 'operations', label: 'Operations', icon: '🔄' },
@@ -1005,15 +1116,9 @@ function App() {
               ))}
             </select>
           </div>
-
-          <div className="form-group">
-            <label>Card Response Type</label>
-            <select value={cardResponseType} onChange={(e) => setCardResponseType(e.target.value)}>
-              <option value="">Default</option>
-              <option value="approved">Approved</option>
-              <option value="declined">Declined</option>
-            </select>
-          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '6px' }}>
+            3DS outcome is controlled in the ACS challenge popup.
+          </p>
         </div>
 
         {/* Feature Test */}
@@ -1031,10 +1136,18 @@ function App() {
             </div>
             <div className="form-group">
               <label>Option</label>
-              <select value={featureOption} onChange={(e) => setFeatureOption(e.target.value)}>
-                <option value="notificationURL">notificationURL</option>
-                <option value="notificationUrl">notificationUrl</option>
-                <option value="NotificationUrl">NotificationUrl</option>
+              <select
+                key={featureTest}
+                value={selectedFeatureOption}
+                onChange={(e) =>
+                  setFeatureOptionsByTest((prev) => ({ ...prev, [featureTest]: e.target.value }))
+                }
+              >
+                {currentFeatureOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.value}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -1045,10 +1158,18 @@ function App() {
               {FEATURE_OPTIONS.find(f => f.id === featureTest)?.description}
             </div>
             <div className="feature-options">
-              Options:<br/>
-              • notificationURL - Capital "URL" (docs example)<br/>
-              • notificationUrl - camelCase<br/>
-              • NotificationUrl - PascalCase
+              Options:
+              {currentFeatureOptions.length === 0 ? (
+                <div style={{ marginTop: '6px' }}>No options available.</div>
+              ) : (
+                <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
+                  {currentFeatureOptions.map((opt) => (
+                    <li key={opt.value}>
+                      {opt.value} - {opt.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
@@ -1536,7 +1657,17 @@ function App() {
                               </div>
                             )}
                             {wh.payload.transactionStatus && (
-                              <div style={{ fontSize: '10px', color: wh.payload.transactionStatus === 'APPROVED' ? '#4ade80' : '#f87171', marginTop: '2px' }}>
+                              <div style={{ 
+                                fontSize: '10px', 
+                                color: (() => {
+                                  const status = String(wh.payload.transactionStatus);
+                                  if (status === 'APPROVED') return '#4ade80';
+                                  if (status === 'REDIRECT') return '#f59e0b';
+                                  if (status === 'PENDING') return '#f59e0b';
+                                  return '#f87171';
+                                })(), 
+                                marginTop: '2px' 
+                              }}>
                                 {String(wh.payload.transactionStatus)}
                               </div>
                             )}
@@ -2056,10 +2187,10 @@ function App() {
             <div className="right-panel" style={{ padding: '24px', overflowY: 'auto' }}>
               <h2 style={{ marginBottom: '8px' }}>🏦 Alternative Payment Methods</h2>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '13px' }}>
-                Discover available APMs by country and currency. Test redirects to payment providers.
+                Discover available APMs by country and currency. Test redirects or run direct transactions.
               </p>
               
-              <div style={{ marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
+              <div style={{ marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Country</label>
                   <select
@@ -2089,6 +2220,27 @@ function App() {
                     <option value="USD">USD</option>
                     <option value="AUD">AUD</option>
                   </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0, minWidth: '180px' }}>
+                  <label>Redirect Mode</label>
+                  <select
+                    value={apmRedirectMode}
+                    onChange={(e) => setApmRedirectMode(e.target.value as 'auto' | 'manual')}
+                    style={{ padding: '8px 12px', borderRadius: '6px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '180px' }}
+                  >
+                    <option value="auto">Auto popup</option>
+                    <option value="manual">Manual (copy/open link)</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0, minWidth: '220px' }}>
+                  <label>User Token ID (optional)</label>
+                  <input
+                    type="text"
+                    value={apmUserTokenId}
+                    onChange={(e) => setApmUserTokenId(e.target.value)}
+                    placeholder="user_123 or email"
+                    style={{ padding: '8px 12px', borderRadius: '6px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px' }}
+                  />
                 </div>
                 <button 
                   className="btn btn-primary" 
@@ -2172,6 +2324,15 @@ function App() {
                       >
                         {apmPaymentResult.redirectUrl.substring(0, 80)}...
                       </a>
+                      {apmRedirectMode === 'manual' && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ marginLeft: '8px' }}
+                          onClick={() => window.open(apmPaymentResult.redirectUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                          🔗 Open Redirect
+                        </button>
+                      )}
                     </div>
                   )}
                   {apmPaymentResult.result && (
@@ -2262,15 +2423,7 @@ function App() {
                           if (needsModal) {
                             setSelectedApmForPayment(apm);
                             setShowApmFieldsModal(true);
-                            setApmFields({
-                              AccountNumber: '',
-                              RoutingNumber: '',
-                              SECCode: 'WEB',
-                              account_id: '',
-                              nettelerAccount: '',
-                              BIC: '',
-                              bankId: ''
-                            });
+                            setApmFields(buildApmFields(apm.paymentMethod));
                           } else {
                             handleApmPayment(apm, {});
                           }
@@ -2477,6 +2630,9 @@ function App() {
             </h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
               <strong>{selectedApmForPayment.paymentMethod}</strong> requires additional information
+            </p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '12px' }}>
+              Test values are pre-filled where available. Adjust if needed.
             </p>
 
             {(() => {
